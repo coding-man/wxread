@@ -1,31 +1,26 @@
-FROM python:3.10-slim
+FROM jenkins/jenkins:lts
 
-# 设置工作目录
-WORKDIR /app
+USER root
 
-# 设置时区为中国时区
-ENV TZ=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+# 安装 Docker CLI 和构建工具
+RUN apt-get update && \
+    apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release   
 
-# 安装 cron
-RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
-ENV PATH="/usr/local/bin:${PATH}"
+# 安装 Docker CLI
+RUN mkdir -m 0755 -p /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y docker-ce-cli
 
-# 复制项目文件
-COPY main.py push.py config.py ./
+# 配置 Jenkins 用户到 docker 组
+#RUN usermod -aG docker jenkins
 
-# 创建日志目录并设置权限
-RUN mkdir -p /app/logs && chmod 777 /app/logs
-
-# 安装 Python 依赖
-RUN pip install --no-cache-dir \
-    requests>=2.32.3 \
-    urllib3>=2.2.3
-
-# 创建 cron 任务（每天凌晨1点执行）
-RUN echo "0 1 * * * cd /app && /usr/local/bin/python3 main.py >> /app/logs/\$(date +\%Y-\%m-\%d).log 2>&1" > /etc/cron.d/wxread-cron
-RUN chmod 0644 /etc/cron.d/wxread-cron
-RUN crontab /etc/cron.d/wxread-cron
-
-# 启动命令
-CMD ["sh", "-c", "service cron start && tail -f /dev/null"]
+# 切换回 jenkins 用户
+USER jenkins

@@ -1,0 +1,24 @@
+
+
+services:
+  jenkins:
+    image: jenkins-orbstack
+    #container_name: jenkins
+    user: root  # 使用 root 以避免权限问题
+    ports:
+      - "8080:8080"
+      #- "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # 挂载 OrbStack 的 Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 挂载 OrbStack 的 Docker CLI
+      #- /usr/local/bin/docker:/usr/bin/docker:ro
+      # 可选：挂载 Docker CLI 配置
+      #- ~/.docker:/root/.docker:ro
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      #- JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+
+volumes:
+  jenkins_home:
